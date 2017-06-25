@@ -25,6 +25,7 @@
     "eslint-plugin-evernote": "^1.0.0"
   },
   "dependencies": {
+    "mongoose": "^4.10.8",
     "oauth": "^0.9.14"
   }
 }
