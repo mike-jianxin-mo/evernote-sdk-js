@@ -21,6 +21,48 @@ exports.index = function(req, res) {
     client.getNoteStore().listNotebooks().then(function(notebooks) {
       req.session.notebooks = notebooks;
       res.render('index', {session: req.session});
+      
+      client.getNoteStore().listTags().then(function(tags){
+          console.log(tags);
+          gistGuid = null;
+          tags.forEach(function(value, index){
+            console.log(value, index);
+            if(value.name === 'gist'){
+              gistGuid = value.guid;
+            }
+          });  
+          if(gistGuid){
+            // prepare search parameters
+            var filter = new Evernote.NoteStore.NoteFilter({
+              tagGuids: [gistGuid],
+              ascending: true
+            });
+            var spec = new Evernote.NoteStore.NotesMetadataResultSpec({
+              includeTitle: true,
+              includeContentLength: true,
+              includeCreated: true,
+              includeUpdated: true,
+              includeDeleted: true,
+              includeUpdateSequenceNum: true,
+              includeNotebookGuid: true,
+              includeTagGuids: true,
+              includeAttributes: true,
+              includeLargestResourceMime: true,
+              includeLargestResourceSize: true,
+            });
+            client.getNoteStore().findNotesMetadata(filter, 0, 500, spec).then(function(nodes){
+              console.log(nodes);
+            }, function(error){
+              console.log(error);
+              req.session.error = JSON.stringify(error);
+              res.render('index', {session: req.session});              
+            });
+          }
+        }, function(error){
+          req.session.error = JSON.stringify(error);
+          res.render('index', {session: req.session});
+        });
+        
     }, function(error) {
       req.session.error = JSON.stringify(error);
       res.render('index', {session: req.session});
