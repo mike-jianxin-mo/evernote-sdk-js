@@ -22,6 +22,7 @@ app.get('/', routes.index);
 app.get('/oauth', routes.oauth);
 app.get('/oauth_callback', routes.oauth_callback);
 app.get('/clear', routes.clear);
+app.get('/content', routes.content);
 
 // Run
 app.listen(3000 , function() {

@@ -233,3 +233,124 @@ exports.clear = function(req, res) {
   req.session.destroy();
   res.redirect('/');
 };
+
+// get all tags from the system
+getTags = function(req, res, client){
+  client.getNoteStore().listTags().then(function(tags){
+      console.log(tags);
+      // return tag data
+      /*
+      gistGuid = null;
+      tags.forEach(function(value, index){
+        console.log(value, index);
+        if(value.name === 'gist'){
+          gistGuid = value.guid;
+        }
+      });  
+      */
+      res.json({tags: tags});
+    }, function(error){
+      errorMessage = JSON.stringify(error);
+      res.json({error: errorMessage});
+    });
+}
+
+// get all notes associated with the tags
+getNotesByTag = function(req, res, client, tagGuids){
+  // prepare search parameters
+  var filter = new Evernote.NoteStore.NoteFilter({
+    tagGuids: [tagGuids],
+    ascending: true
+  });
+  var spec = new Evernote.NoteStore.NotesMetadataResultSpec({
+    includeTitle: true,
+    includeContentLength: true,
+    includeCreated: true,
+    includeUpdated: true,
+    includeDeleted: true,
+    includeUpdateSequenceNum: true,
+    includeNotebookGuid: true,
+    includeTagGuids: true,
+    includeAttributes: true,
+    includeLargestResourceMime: true,
+    includeLargestResourceSize: true,
+  });
+  client.getNoteStore().findNotesMetadata(filter, 0, 500, spec).then(function(nodes){
+    console.log(nodes);
+    res.json({nodes: nodes})
+    // return nodes data
+  }, function(error){
+    console.log(error);
+    errorMessage = JSON.stringify(error);
+    res.json({error: errorMessage});             
+  });
+}
+
+// get note details
+getNote = function(req, res, client, noteGuid){
+  var spec = new Evernote.NoteStore.NoteResultSpec({
+    includeContent: true,
+    includeResourcesData: true,
+    includeResourcesRecognition: true,
+    includeResourcesAlternateData: true,
+    includeSharedNotes: true,
+    includeNoteAppDataValues: true,
+    includeResourceAppDataValues: true,
+    includeAccountLimits: true
+  });
+  client.getNoteStore().getNoteWithResultSpec(noteGuid, spec).then(function(node){
+    console.log(node);
+    res.json({node: node})
+    // return nodes data
+  }, function(error){
+    console.log(error);
+    errorMessage = JSON.stringify(error);
+    res.json({error: errorMessage});             
+  });
+}
+
+// content page
+exports.content = function(req, res) {
+  // get user id
+  console.log('******************************');
+  var userId = req.query.uid;
+  console.log(userId)
+  var resource = req.query.res;
+  console.log('******************************', userId, resource);
+  if(userId && resource){
+    EvernoteData.findOne({userId: userId}, function(err, evernoteData) {
+      if (err){
+          console.log(err);
+          res.json({result: 'mongodb error'});
+      }
+      console.log(evernoteData);
+      if(evernoteData && evernoteData.oauthAccessToken){
+        // get the access token from db
+        const oauthAccessToken = evernoteData.oauthAccessToken;
+        console.log(oauthAccessToken);
+        var client = new Evernote.Client({
+          token: oauthAccessToken,
+          sandbox: config.SANDBOX,
+          china: config.CHINA
+        });
+
+        switch(resource){
+          case 'tags':
+            getTags(req, res, client);
+            break;
+          case 'notes_by_tags':
+            var tagGuids = req.query.tags
+            if(tagGuids)
+              getNotesByTag(req, res, client, tagGuids);
+            break;
+          case 'note':
+            var noteId = req.query.nid;
+            if(noteId)
+              getNote(req, res, client, noteId);
+            break;
+        }
+      }else
+        res.json({result: 'on saved authorized data'});        
+    });
+  }
+};
